@@ -1,101 +1,165 @@
-import Image from "next/image";
+"use client"
+import React, { useEffect, useState } from 'react';
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import HeroBanner from "@/components/HeroBanner";
+import Link from "next/link";
+import Image from 'next/image';
+import { ReactNode } from 'react';
 
-export default function Home() {
+const Badge = ({ children, variant = 'default', className = '', ...props }: { children: ReactNode, variant?: 'default' | 'secondary' | 'success', className?: string }) => {
+  const baseStyle = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium';
+  const variants = {
+    default: 'bg-blue-100 text-blue-800',
+    secondary: 'bg-gray-100 text-gray-800',
+    success: 'bg-green-100 text-green-800'
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <span className={`${baseStyle} ${variants[variant]} ${className}`} {...props}>
+      {children}
+    </span>
+  );
+};
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  image_urls: string | string[];
+  category_id: number;
+  slug: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+const ProductsPage = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    // Fetch categories
+    fetch('/api/categories')
+      .then((res) => res.json())
+      .then((data) => setCategories(data));
+
+    // Fetch products
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => setProducts(data));
+  }, []);
+
+  const productSettings = {
+    dots: false,
+    centerMode: false,
+    infinite: false,
+    speed: 500,
+    slidesToShow: 4,
+    slidesToScroll: 1,
+    responsive: [
+      {
+        breakpoint: 1280,
+        settings: {
+          slidesToShow: 3,
+        }
+      },
+      {
+        breakpoint: 768,
+        settings: {
+          slidesToShow: 2,
+        }
+      },
+      {
+        breakpoint: 480,
+        settings: {
+          slidesToShow: 1,
+        }
+      }
+    ]
+  };
+
+  const cleanImageUrl = (url: string): string | null => {
+    if (!url) return null;
+    return url.replace(/\\"/g, '').replace(/\\/g, '').replace(/^"/, '').replace(/"$/, '');
+  };
+
+  const cleanImageUrls = (urls: string | string[]) => {
+    if (!urls) return [];
+    if (typeof urls === 'string') {
+      try {
+        urls = JSON.parse(urls);
+      } catch (e) {
+        console.log(e)
+        return [];
+      }
+    }
+    return Array.isArray(urls) ? urls.map((url: string) => cleanImageUrl(url)) : [];
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <HeroBanner />
+
+      {/* Categories with Product Carousels */}
+      {categories.map((category: Category) => (
+        <div key={category.id} className="my-12">
+          <h2 className="text-2xl first-letter:uppercase font-bold mb-6">{category.name}</h2>
+
+          <div className="relative">
+            <Slider {...productSettings}>
+              {products
+                .filter((product) => product.category_id === category.id)
+                .map((product) => {
+                  const cleanedUrls = cleanImageUrls(product.image_urls);
+                  const firstImage = cleanedUrls[0] || "/api/placeholder/900/1600";
+                  return (
+                    <div key={product.id} className="px-2">
+                      <Link href={`/product/${product.slug}`} className="block h-full">
+                        <div className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform transition-transform hover:scale-105 h-full flex flex-col">
+                          {/* Image container with 9:16 aspect ratio */}
+                          <div className="relative pb-[67.78%]">
+                            <Image
+                              src={firstImage}
+                              alt={product.name}
+                              layout="fill"
+                              objectFit="cover"
+                              className="absolute inset-0"
+                            />
+                          </div>
+
+                          {/* Content container */}
+                          <div className="p-4 flex flex-col flex-grow">
+                            <h3 className="text-lg font-semibold mb-2 line-clamp-1">{product.name}</h3>
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">
+                              {product.description}
+                            </p>
+                            <div className="mt-auto">
+                              <Badge className="mb-3">
+                                {category.name}
+                              </Badge>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-gray-900">
+                                  ${product.price}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+            </Slider>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      ))}
     </div>
   );
-}
+};
+
+export default ProductsPage;
