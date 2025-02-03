@@ -22,7 +22,7 @@ export default function LoginPage() {
             const data = await res.json();
             if (data.token) {
                 localStorage.setItem('token', data.token);
-                router.push('/product');
+                router.push('/');
             } else {
                 setMessage(data.error);
             }
