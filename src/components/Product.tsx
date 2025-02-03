@@ -24,7 +24,7 @@ const Product = ({ slug }: { slug: string }) => {
     const [quantity, setQuantity] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
-    const [currentSlide, setCurrentSlide] = useState(0);
+    const [_currentSlide, setCurrentSlide] = useState(0);
     const [sliderInitialized, setSliderInitialized] = useState(false);
     const sliderRef = useRef<Slider | null>(null);
     const { addToCart } = useCart();
