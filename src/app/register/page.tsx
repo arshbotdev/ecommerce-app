@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({ username: '', email: '', password: '' });
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,9 +26,20 @@ export default function RegisterPage() {
                 throw new Error(data.error || 'Registration failed');
             }
 
-            setMessage(data.message);
-            // Clear form on success
+            // Store token in localStorage
+            localStorage.setItem('token', data.token);
+
+            // Show success message briefly before redirect
+            setMessage('Registration successful! Redirecting...');
+
+            // Clear form
             setFormData({ username: '', email: '', password: '' });
+
+            // Redirect to home page after a short delay
+            setTimeout(() => {
+                router.push('/');
+            }, 1000);
+
         } catch (error) {
             setMessage(error instanceof Error ? error.message : 'Registration failed');
         } finally {
@@ -88,7 +101,7 @@ export default function RegisterPage() {
                 </form>
 
                 {message && (
-                    <div className={`mt-4 text-center ${message.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className={`mt-4 text-center ${message.includes('successful') ? 'text-green-600' : 'text-red-600'}`}>
                         {message}
                     </div>
                 )}

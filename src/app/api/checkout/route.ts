@@ -45,7 +45,15 @@ export async function POST(request: Request) {
             currency: 'inr',
             metadata: {
                 userId: decoded.id
-            }
+            },
+            shipping_address_collection: {
+                allowed_countries: ['IN'], // Add other country codes as needed
+            },
+            phone_number_collection: {
+                enabled: true,
+            },
+            billing_address_collection: 'required',
+            customer_email: undefined // This will prompt for email if not already known
         });
 
         return NextResponse.json({ sessionId: session.id });

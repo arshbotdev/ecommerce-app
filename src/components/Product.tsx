@@ -218,10 +218,10 @@ const Product = ({ slug }: { slug: string }) => {
                         <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
                         <div className="flex items-center gap-4 mb-4">
                             <span className="text-2xl font-bold text-gray-900">
-                                ${totalPrice}
+                                ₹{totalPrice}
                                 {quantity > 1 && (
                                     <span className="text-sm text-gray-500 ml-2">
-                                        (${product.price} each)
+                                        (₹{product.price} each)
                                     </span>
                                 )}
                             </span>

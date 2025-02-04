@@ -12,8 +12,9 @@ export default function AdminProductsPage() {
         description: '',
         price: '',
         categoryId: '',
-        images: [] as File[],
+        images: [] as Array<string | File>,
     });
+    const [imageUrl, setImageUrl] = useState(''); // Store URL input
     const [message, setMessage] = useState('');
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +40,23 @@ export default function AdminProductsPage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setProductData({ ...productData, images: Array.from(e.target.files) });
+            const newFiles = Array.from(e.target.files);
+            if (productData.images.length + newFiles.length > 5) {
+                setMessage('You can upload a maximum of 5 images.');
+                return;
+            }
+            setProductData({ ...productData, images: [...productData.images, ...newFiles] });
         }
+    };
+
+    const handleUrlAdd = () => {
+        if (!imageUrl) return;
+        if (productData.images.length >= 5) {
+            setMessage('You can add only 5 images.');
+            return;
+        }
+        setProductData({ ...productData, images: [...productData.images, imageUrl] });
+        setImageUrl('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -51,11 +67,13 @@ export default function AdminProductsPage() {
         formData.append('price', productData.price);
         formData.append('categoryId', productData.categoryId);
 
-        // Upload images to Cloudinary first
+        // Upload only File type images to Cloudinary
         const uploadedImages = await Promise.all(
-            productData.images.map(async (file) => {
+            productData.images.map(async (image) => {
+                if (typeof image === 'string') return image; // Keep manual URLs
+
                 const imageData = new FormData();
-                imageData.append('file', file);
+                imageData.append('file', image);
                 imageData.append('upload_preset', 'ml_default');
 
                 const res = await fetch(`https://api.cloudinary.com/v1_1/ecomm-app-react/image/upload`, {
@@ -68,7 +86,7 @@ export default function AdminProductsPage() {
             })
         );
 
-        // Send product data with image URLs
+        // Send product data with final image URLs
         const res = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -98,7 +116,7 @@ export default function AdminProductsPage() {
                     placeholder="Product Name"
                     value={productData.name}
                     onChange={(e) => setProductData({ ...productData, name: e.target.value })}
-                    className="border p-2 rounded"
+                    className="border p-2 rounded w-full"
                     required
                 />
 
@@ -106,7 +124,7 @@ export default function AdminProductsPage() {
                     placeholder="Description"
                     value={productData.description}
                     onChange={(e) => setProductData({ ...productData, description: e.target.value })}
-                    className="border p-2 rounded h-32"
+                    className="border p-2 rounded w-full h-32"
                     required
                 />
 
@@ -115,7 +133,7 @@ export default function AdminProductsPage() {
                     placeholder="Price"
                     value={productData.price}
                     onChange={(e) => setProductData({ ...productData, price: e.target.value })}
-                    className="border p-2 rounded"
+                    className="border p-2 rounded w-full"
                     step="0.01"
                     min="0"
                     required
@@ -124,7 +142,7 @@ export default function AdminProductsPage() {
                 <select
                     value={productData.categoryId}
                     onChange={(e) => setProductData({ ...productData, categoryId: e.target.value })}
-                    className="border p-2 rounded"
+                    className="border p-2 rounded w-full"
                     required
                 >
                     <option value="">Select Category</option>
@@ -135,17 +153,44 @@ export default function AdminProductsPage() {
                     ))}
                 </select>
 
-                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="border p-2 rounded" required />
+                {/* File Upload */}
+                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="border p-2 rounded w-full" />
+
+                {/* URL Input */}
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="Add Image URL"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        className="border p-2 rounded flex-grow"
+                    />
+                    <button type="button" onClick={handleUrlAdd} className="bg-green-500 text-white px-3 py-2 rounded">
+                        Add
+                    </button>
+                </div>
+
+                {/* Preview Selected Images */}
+                <div className="flex flex-wrap gap-2">
+                    {productData.images.map((img, idx) => (
+                        <div key={idx} className="relative w-20 h-20 border rounded overflow-hidden">
+                            {typeof img === 'string' ? (
+                                <img src={img} alt="Preview" className="w-full h-full object-cover" />
+                            ) : (
+                                <img src={URL.createObjectURL(img)} alt="Preview" className="w-full h-full object-cover" />
+                            )}
+                        </div>
+                    ))}
+                </div>
 
                 {isLoading && <p className="text-gray-500">Loading categories...</p>}
                 {error && <p className="text-red-500">{error}</p>}
+                {message && <p className={`mt-4 ${message.includes('error') ? 'text-red-500' : 'text-green-500'}`}>{message}</p>}
 
                 <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" disabled={isLoading}>
                     Add Product
                 </button>
             </form>
-
-            {message && <p className={`mt-4 ${message.includes('error') ? 'text-red-500' : 'text-green-500'}`}>{message}</p>}
         </div>
     );
 }
