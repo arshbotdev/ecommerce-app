@@ -7,7 +7,6 @@ export async function POST(request: Request) {
     const { productId, quantity } = await request.json();
 
     const token = request.headers.get('Authorization')?.split(' ')[1];
-    console.log(token)
 
     if (!token) {
         return NextResponse.json({ error: 'No token provided' }, { status: 401 });

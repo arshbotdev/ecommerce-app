@@ -1,9 +1,7 @@
 'use client';
 import React from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import {useCart} from "@/context/CartContext";
-
-const stripePromise = loadStripe('pk_test_51NErIrSBXsZByhUPJglnHiPfy0Mc0Do8YgW3OKMPCOmSMX0s1TiS6lY75PjkHVGm1ydnx3bqCuXMQkQTIMgXmrx1003VCJA1Gn');
+import { useCart } from "@/context/CartContext";
+import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
     const {
@@ -11,10 +9,12 @@ export default function CartPage() {
         isLoading,
         error,
         updateCartItem,
-        removeFromCart
+        removeFromCart,
     } = useCart();
 
-    const [checkoutLoading, setCheckoutLoading] = React.useState(false);
+    const router = useRouter();
+    const [orderPlacing, setOrderPlacing] = React.useState(false);
+    const [orderConfirmation, setOrderConfirmation] = React.useState(false);
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -40,10 +40,11 @@ export default function CartPage() {
 
     const handleCheckout = async () => {
         try {
-            setCheckoutLoading(true);
+            setOrderPlacing(true);
             const token = localStorage.getItem('token');
 
-            const response = await fetch('/api/checkout', {
+            // Create the order in the database
+            const response = await fetch('/api/orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -52,19 +53,23 @@ export default function CartPage() {
                 body: JSON.stringify({ items: cartItems }),
             });
 
-            const { sessionId } = await response.json();
+            const data = await response.json();
 
-            const stripe = await stripePromise;
-            if (stripe) {
-                const { error } = await stripe.redirectToCheckout({ sessionId });
-                if (error) {
-                    throw new Error(error.message || 'Payment failed');
-                }
+            if (response.ok) {
+                setOrderConfirmation(true);
+                // Clear the cart after successful order placement
+                // Redirect to orders page after 3 seconds
+                setTimeout(() => {
+                    router.push('/orders');
+                }, 3000);
+            } else {
+                throw new Error(data.error || 'Failed to place order');
             }
         } catch (err) {
-            console.error('Checkout error:', err);
+            console.error('Order placement error:', err);
+            alert('Failed to place order. Please try again.');
         } finally {
-            setCheckoutLoading(false);
+            setOrderPlacing(false);
         }
     };
 
@@ -84,6 +89,16 @@ export default function CartPage() {
         return (
             <div className="max-w-lg mx-auto mt-8 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                 {error}
+            </div>
+        );
+    }
+
+    if (orderConfirmation) {
+        return (
+            <div className="max-w-lg mx-auto mt-8 bg-green-100 border border-green-400 text-green-700 px-4 py-8 rounded text-center">
+                <h2 className="text-2xl font-bold mb-4">Order Confirmed!</h2>
+                <p className="mb-4">Your order has been placed successfully.</p>
+                <p>Redirecting to your orders page...</p>
             </div>
         );
     }
@@ -150,10 +165,10 @@ export default function CartPage() {
                         <div className="mt-4">
                             <button
                                 onClick={handleCheckout}
-                                disabled={checkoutLoading}
+                                disabled={orderPlacing}
                                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {checkoutLoading ? 'Processing...' : 'Proceed to Checkout'}
+                                {orderPlacing ? 'Processing...' : 'Place Order'}
                             </button>
                         </div>
                     </div>
