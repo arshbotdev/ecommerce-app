@@ -94,3 +94,66 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+
+export async function POST(request) {
+  try {
+    const token = request.headers.get('Authorization')?.split(' ')[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    }
+
+    const user = verify(token, 'secret-key') as DecodedToken; 
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { items } = await request.json();
+
+    if (!items || !items.length) {
+      return NextResponse.json({ error: 'No items provided' }, { status: 400 });
+    }
+
+    // Start a transaction
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Create the order
+      const [orderResult] = await sequelize.query(`
+                INSERT INTO orders (user_id, status) VALUES (?, 'confirmed')
+            `, {
+        replacements: [user.id],
+        transaction
+      });
+
+      const orderId = orderResult;
+
+      // Create the order items
+      for (const item of items) {
+        await sequelize.query(`
+                    INSERT INTO order_items (order_id, product_id, quantity, price)
+                    VALUES (?, ?, ?, ?)
+                `, {
+          replacements: [orderId, item.product_id, item.quantity, item.price],
+          transaction
+        });
+      }
+
+      // Commit the transaction
+      await transaction.commit();
+
+      return NextResponse.json({
+        success: true,
+        message: 'Order placed successfully',
+        orderId
+      });
+    } catch (error) {
+      // Rollback the transaction in case of error
+      await transaction.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating order:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

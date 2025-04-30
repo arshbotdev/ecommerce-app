@@ -12,7 +12,7 @@ const DashboardLayout = () => {
             {/* Sidebar */}
             <div className="w-64 bg-white shadow-md">
                 {/* Logo */}
-               
+
 
                 {/* Navigation */}
                 <nav className="mt-4">
